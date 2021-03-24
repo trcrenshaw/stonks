@@ -1,6 +1,7 @@
 import discord
 from typing import List, Any
 from discord.ext import commands, tasks
+import discord
 import yfinance as yf
 from dataclasses import dataclass
 from datetime import datetime
@@ -97,14 +98,27 @@ async def check_stocks():
         if alert.type == '%':
             change = round(100*(close[-1] - prev_value)/prev_value, 2)
             if abs(change) > alert.value:
-                await channel.send(f'{alert.ticker} changed by {change}%  Price: ${round(close[-1], 2)}')
+                embed = discord.Embed()
+                embed.description = f'{alert.ticker} changed by {change}%  Price: ${round(close[-1], 2)}'
+                await channel.send(embed=embed)
                 alert.last_alert = close[-1]
         elif alert.type == '$':
             change = round(close[-1] - prev_value, 2)
             if abs(change) > alert.value:
-                await channel.send(f'{alert.ticker} changed by ${change}  Price: ${round(close[-1], 2)}')
+                embed = discord.Embed()
+                embed.description = f'{alert.ticker} changed by ${change}  Price: ${round(close[-1], 2)}'
+                await channel.send(embed=embed)
                 alert.last_alert = close[-1]
     save_alerts()
+
+
+@commands.command()
+async def get_stock(ctx, *args):
+    ticker = args[0]
+    em = discord.Embed(title="{ticker}",
+                       colour=0x0080c0)
+    em.add_field(name="Ticker", value="https://finance.yahoo.com/quote/{ticker}")
+    await ctx.send(embed=em)
 
 
 @check_stocks.before_loop
@@ -116,6 +130,7 @@ check_stocks.start()
 
 client.add_command(add_alert)
 client.add_command(get_alerts)
+client.add_command(get_stock)
 client.add_command(reset_alerts)
 client.add_command(remove_alert)
 
