@@ -432,7 +432,7 @@ class Stocks(commands.Cog):
     @tasks.loop(minutes=1)
     async def check_stocks(self):
         logger.info(f'Checking Stocks')
-        channel = self.channels['general']
+        channel = self.bot.get_channel(821841802796859406)
         for alert in self.alerts:
             try:
                 data = yf.download(alert.ticker,
@@ -467,6 +467,29 @@ class Stocks(commands.Cog):
                                      f'${change} Price: ${round(close[-1], 2)}'
                     await channel.send(embed=em)
                     alert.last_alert = close[-1]
+
+            elif alert.type == 'Above':
+                if close[-1] > alert.value and alert.last_alert is None:
+                    em = discord.Embed()
+                    em.colour = 0x00ff00 if close[-1] > alert.value else 0xff0000
+                    em.description = f'[{alert.ticker}](https://finance.yahoo.com/quote/{alert.ticker}) is above ' \
+                                     f'${alert.value} Price: ${round(close[-1], 2)}'
+                    await channel.send(embed=em)
+                    alert.last_alert = close[-1]
+                elif close[-1] < alert.value:
+                    alert.last_alert = None
+
+            elif alert.type == 'Below':
+                if close[-1] < alert.value and alert.last_alert is None:
+                    em = discord.Embed()
+                    em.colour = 0x00ff00 if close[-1] > alert.value else 0xff0000
+                    em.description = f'[{alert.ticker}](https://finance.yahoo.com/quote/{alert.ticker}) is below ' \
+                                     f'${alert.value} Price: ${round(close[-1], 2)}'
+                    await channel.send(embed=em)
+                    alert.last_alert = close[-1]
+                elif close[-1] > alert.value:
+                    alert.last_alert = None
+
         self.save(self.alerts, self.alerts_file)
 
     @staticmethod
