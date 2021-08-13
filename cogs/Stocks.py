@@ -56,6 +56,14 @@ class Options:
         option_type=3,
         required=True
     )
+
+    ticker2 = create_option(
+        name="ticker2",
+        description="Stock Ticker Ex. AAPL",
+        option_type=3,
+        required=True
+    )
+
     trigger_price = create_option(
         name="trigger_price",
         description="Alert Trigger Price",
@@ -180,9 +188,7 @@ class Stocks(commands.Cog):
             'max': '1d',
         }
 
-        self.channels = {
-            'general': self.bot.get_channel(821841802796859406),
-        }
+        self.channels = {}
 
 
         self.alerts_file = 'Alerts.pkl'
@@ -195,6 +201,7 @@ class Stocks(commands.Cog):
         logger.info(f'{self.bot.user} has connected to Discord!')
         logger.info(f'Starting Stock Loop task')
         self.check_stocks.start()
+        self.channels['general'] = self.bot.get_channel(821841802796859406)
 
     @cog_ext.cog_subcommand(
         base='Add',
@@ -356,9 +363,30 @@ class Stocks(commands.Cog):
         for index, alert in enumerate(self.alerts):
             msg += f'{index}: {alert.ticker} - {alert.value}{alert.type}\n'
         msg = 'No active alerts' if msg == '' else msg
-
         await ctx.send(msg)
 
+    @cog_ext.cog_subcommand(
+        base='Check',
+        name='Paring',
+        description='Check Crpyto Paring',
+        guild_ids=GUILD_IDS,
+        options=[Options.ticker, Options.ticker2]
+    )
+    async def check_paring(self, ctx: SlashContext, ticker: str, ticker2: str):
+        try:
+            data = yf.download(f'{ticker} {ticker2}',
+                               period='1d',
+                               interval='1m',
+                               group_by='ticker',
+                               prepost=True)
+        except:
+            logger.error('Could not download data')
+            return
+        p1 = data[ticker]['Close'][0]
+        p2 = data[ticker2]['Close'][0]
+        price = f'{(p2/p1):.15f}'
+        msg = f'Current estimated price is {price.rstrip("0").rstrip(".")} {ticker}/{ticker2}'
+        await ctx.send(msg)
 
 
     @cog_ext.cog_slash(
@@ -428,6 +456,20 @@ class Stocks(commands.Cog):
         await ctx.send(f'Sold {shares} shares of  {ticker} at ${share_price} per share')
         logger.info(f'Sold {shares} shares of  {ticker} at ${share_price} per share')
         self.save(self.trades, self.trades_file)
+
+    @cog_ext.cog_subcommand(
+        base='List',
+        name='Trades',
+        description='List all Trades',
+        guild_ids=GUILD_IDS,
+        options=[]
+    )
+    async def list_alerts(self, ctx: SlashContext):
+        msg = ''
+        for index, trade in enumerate(self.trades):
+            msg += f'{index}: {trade.ticker}: {trade.shares} shares at {trade.share_price}\n'
+        msg = 'No active alerts' if msg == '' else msg
+        await ctx.send(msg)
 
     @tasks.loop(minutes=1)
     async def check_stocks(self):

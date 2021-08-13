@@ -1,4 +1,4 @@
 discord
-yfinance
+yfinance==0.1.63
 boto3
 discord-py-slash-command
